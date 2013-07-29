@@ -31,7 +31,7 @@ public class DeserializeTest {
             "length 8".getBytes(), // string
             
             new TypedData(TL.VECTOR.applyType(TL.INT), new Object[] { // vector
-                new int[] {1, 2, 3, 4, 5} // vector first argument
+                new Integer[] {1, 2, 3, 4, 5} // vector first argument
             }),
             
             1337L // long
@@ -68,16 +68,43 @@ public class DeserializeTest {
         ITypedDataProvider numbersGiven = (ITypedDataProvider) given.getTypedData(1);
         Assert.assertEquals(0xa03855ae, numbersGiven.getConstructor().getId());
         Assert.assertArrayEquals(
-            new int[] {1, 2, 3, 4, 5},
-            (int[]) numbersGiven.getTypedData(0)
+            new Integer[] {1, 2, 3, 4, 5},
+            (Integer[]) numbersGiven.getTypedData(0)
         );
         
         Assert.assertEquals( // long
             (Long) 1337L,
             (Long) given.getTypedData(2)
         );
+    }
+    
+    @Test
+    public void int128() {
+        byte[] serialized = SerializeTest.fromHex(
+            "112233445566778899aabbccddeeff11"
+        );
         
-        //Assert.assertArrayEquals(expected, serialized);
+        ByteBuffer buffer = ByteBuffer.wrap(serialized);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        
+        byte[] deserialized = (byte[]) TL.deserialize(null, TL.INT128, buffer);
+        
+        Assert.assertArrayEquals(serialized, deserialized);
+    }
+    
+    @Test
+    public void int256() {
+        byte[] serialized = SerializeTest.fromHex(
+            "112233445566778899aabbccddeeff11" +
+            "112233445566778899aabbccddeeff11"
+        );
+        
+        ByteBuffer buffer = ByteBuffer.wrap(serialized);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        
+        byte[] deserialized = (byte[]) TL.deserialize(null, TL.INT256, buffer);
+        
+        Assert.assertArrayEquals(serialized, deserialized);
     }
 
 }

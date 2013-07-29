@@ -30,7 +30,7 @@ public class SerializeTest {
             "length 8".getBytes(), // string
             
             new TypedData(TL.VECTOR.applyType(TL.INT), new Object[] { // vector
-                new int[] {1, 2, 3, 4, 5} // vector first argument
+                new Integer[] {1, 2, 3, 4, 5} // vector first argument
             }),
             
             1337L // long

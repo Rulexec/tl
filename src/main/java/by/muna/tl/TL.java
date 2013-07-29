@@ -17,7 +17,8 @@ public class TL {
         INT128_ID = 0xba4de549, // int128 ? = Int
         INT256_ID = 0x09b143a3, // int256 ? = Int
         STRING_ID = 0xb5286e24, // string ? = String
-        LONG_ID = 0x22076cba; // long ? = Long
+        LONG_ID = 0x22076cba, // long ? = Long
+        DOUBLE_ID = 0x2210c154; // double ? = Double
     
     public static ConstructorArgs SINGLE_DATA_HOLE = new ConstructorArgs(DataHole.HOLE);
     
@@ -25,8 +26,10 @@ public class TL {
     
     public static final Type INT_TYPE = new Type("Int");
     public static final Type LONG_TYPE = new Type("Long");
+    public static final Type DOUBLE_TYPE = new Type("Double");
     public static final Type STRING_TYPE = new Type("String");
     public static final Type VECTOR_TYPE = new Type("Vector", 1);
+    public static final Type OBJECT_TYPE = new Type("Object");
     
     public static final Constructor VECTOR = new Constructor(
         "vector", TL.VECTOR_TYPE, new ConstructorArgs(new VectorHole(TL.TYPE_HOLE_0))
@@ -36,8 +39,9 @@ public class TL {
     public static final Constructor INT128 = new Constructor("int128", TL.INT_TYPE, TL.SINGLE_DATA_HOLE);
     public static final Constructor INT256 = new Constructor("int256", TL.INT_TYPE, TL.SINGLE_DATA_HOLE);
     
-    public static final Constructor LONG = new Constructor("long", new Type("Long"), TL.SINGLE_DATA_HOLE);
-    public static final Constructor STRING = new Constructor("string", new Type("String"), TL.SINGLE_DATA_HOLE);
+    public static final Constructor LONG = new Constructor("long", TL.LONG_TYPE, TL.SINGLE_DATA_HOLE);
+    public static final Constructor DOUBLE = new Constructor("double", TL.DOUBLE_TYPE, TL.SINGLE_DATA_HOLE);
+    public static final Constructor STRING = new Constructor("string", TL.STRING_TYPE, TL.SINGLE_DATA_HOLE);
     
     public static int calcSize(IType t, Object data) {
         Constructor c;
@@ -48,7 +52,9 @@ public class TL {
         
             switch (c.getId()) {
             case TL.INT_ID: return 4;
-            case TL.LONG_ID: return 8;
+            case TL.INT128_ID: return 16;
+            case TL.INT256_ID: return 32;
+            case TL.LONG_ID: case TL.DOUBLE_ID: return 8;
             case TL.STRING_ID:
                 byte[] bytes = (byte[]) data;
                 
@@ -80,10 +86,11 @@ public class TL {
                     c = (Constructor) specialisation;
                     
                     switch (c.getId()) {
-                    case TL.INT_ID: return 4 + 4 * ((int[]) data).length;
-                    case TL.INT128_ID: return 4 + 16 * ((byte[]) data).length;
-                    case TL.INT256_ID: return 4 + 32 * ((byte[]) data).length;
-                    case TL.LONG_ID: return 4 + 8 * ((long[]) data).length;
+                    case TL.INT_ID: return 4 + 4 * ((Integer[]) data).length;
+                    case TL.INT128_ID: return 4 + 16 * ((Byte[]) data).length;
+                    case TL.INT256_ID: return 4 + 32 * ((Byte[]) data).length;
+                    case TL.LONG_ID: return 4 + 8 * ((Long[]) data).length;
+                    case TL.DOUBLE_ID: return 4 + 8 * ((Double[]) data).length;
                     }
                 }
                 
@@ -113,6 +120,7 @@ public class TL {
             switch (c.getId()) {
             case TL.INT_ID: buffer.putInt((Integer) data); return;
             case TL.LONG_ID: buffer.putLong((Long) data); return;
+            case TL.DOUBLE_ID: buffer.putDouble((Double) data); return;
             case TL.INT128_ID: case TL.INT256_ID: buffer.put((byte[]) data); return;
             case TL.STRING_ID:
                 byte[] bytes = (byte[]) data;
@@ -161,29 +169,6 @@ public class TL {
                 VectorHole hole = (VectorHole) t;
                 IType specialisation = hole.getSpecialisation();
                 
-                if (specialisation instanceof Constructor) {
-                    c = (Constructor) specialisation;
-                    
-                    switch (c.getId()) {
-                    case TL.INT_ID:
-                        int[] intValues = (int[]) data;
-                        
-                        buffer.putInt(intValues.length);
-                        
-                        for (int value : intValues) { buffer.putInt(value); }
-                        
-                        return;
-                    case TL.LONG_ID:
-                        long[] longValues = (long[]) data;
-                        
-                        buffer.putInt(longValues.length);
-                        
-                        for (long value : longValues) { buffer.putLong(value); }
-                        
-                        return;
-                    }
-                }
-                
                 Object[] vectorData = (Object[]) data;
                 
                 buffer.putInt(vectorData.length);
@@ -214,12 +199,15 @@ public class TL {
             switch (c.getId()) {
             case TL.INT_ID: return buffer.getInt();
             case TL.LONG_ID: return buffer.getLong();
+            case TL.DOUBLE_ID: return buffer.getDouble();
             case TL.INT128_ID:
-                bytesCount = 16;
-            case TL.INT256_ID:
-                bytesCount = 32;
+                bytes = new byte[16];
                 
-                bytes = new byte[bytesCount];
+                buffer.get(bytes);
+                
+                return bytes;
+            case TL.INT256_ID:
+                bytes = new byte[32];
                 
                 buffer.get(bytes);
                 
@@ -271,26 +259,19 @@ public class TL {
                 
                 int count = buffer.getInt();
                 
+                Object[] values = null;
+                
                 if (specialisation instanceof Constructor) {
                     c = (Constructor) specialisation;
                     
                     switch (c.getId()) {
-                    case TL.INT_ID:
-                        int[] intValues = new int[count];
-                        
-                        for (int i = 0; i < count; i++) { intValues[i] = buffer.getInt(); }
-                        
-                        return intValues;
-                    case TL.LONG_ID:
-                        long[] longValues = new long[count];
-                        
-                        for (int i = 0; i < count; i++) { longValues[i] = buffer.getLong(); }
-                        
-                        return longValues;
+                    case TL.INT_ID: values = new Integer[count]; break;
+                    case TL.LONG_ID: values = new Long[count]; break;
+                    case TL.DOUBLE_ID: values = new Double[count]; break;
                     }
                 }
                 
-                Object[] values = new Object[count];
+                if (values == null) values = new Object[count];
                 
                 for (int i = 0; i < count; i++) {
                     values[i] = TL.deserialize(constructorProvider, specialisation, buffer);

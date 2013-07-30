@@ -6,7 +6,7 @@ import java.nio.ByteOrder;
 import org.junit.Assert;
 import org.junit.Test;
 
-import by.muna.tl.ITypedDataProvider;
+import by.muna.tl.ITypedData;
 import by.muna.tl.TL;
 import by.muna.tl.TypedData;
 import by.muna.types.Constructor;
@@ -26,7 +26,7 @@ public class SerializeTest {
             )
         );
         
-        ITypedDataProvider data = new TypedData(c, new Object[] {
+        ITypedData data = new TypedData(c, new Object[] {
             "length 8".getBytes(), // string
             
             new TypedData(TL.VECTOR.applyType(TL.INT), new Object[] { // vector

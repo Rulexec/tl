@@ -7,7 +7,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import by.muna.tl.IConstructorProvider;
-import by.muna.tl.ITypedDataProvider;
+import by.muna.tl.ITypedData;
 import by.muna.tl.TL;
 import by.muna.tl.TypedData;
 import by.muna.types.Constructor;
@@ -27,7 +27,7 @@ public class DeserializeTest {
             )
         );
         
-        ITypedDataProvider expected = new TypedData(c, new Object[] {
+        ITypedData expected = new TypedData(c, new Object[] {
             "length 8".getBytes(), // string
             
             new TypedData(TL.VECTOR.applyType(TL.INT), new Object[] { // vector
@@ -58,14 +58,14 @@ public class DeserializeTest {
         ByteBuffer buffer = ByteBuffer.wrap(serialized);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         
-        ITypedDataProvider given = (ITypedDataProvider) TL.deserialize(provider, c, buffer);
+        ITypedData given = (ITypedData) TL.deserialize(provider, c, buffer);
         
         Assert.assertArrayEquals( // string
             SerializeTest.fromHex("6c656e6774682038"),
             (byte[]) given.getTypedData(0)
         );
         
-        ITypedDataProvider numbersGiven = (ITypedDataProvider) given.getTypedData(1);
+        ITypedData numbersGiven = (ITypedData) given.getTypedData(1);
         Assert.assertEquals(0xa03855ae, numbersGiven.getConstructor().getId());
         Assert.assertArrayEquals(
             new Integer[] {1, 2, 3, 4, 5},

@@ -1,6 +1,7 @@
 package by.muna.tl;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 import by.muna.types.Constructor;
 import by.muna.types.ConstructorArg;
@@ -11,7 +12,7 @@ import by.muna.types.Type;
 import by.muna.types.TypeHole;
 import by.muna.types.VectorHole;
 
-public class TL {
+public class TL implements TLValue {
     public static final int
         INT_ID = 0xa8509bda, // int ? = Int
         INT128_ID = 0xba4de549, // int128 ? = Int
@@ -20,9 +21,9 @@ public class TL {
         LONG_ID = 0x22076cba, // long ? = Long
         DOUBLE_ID = 0x2210c154; // double ? = Double
     
-    public static ConstructorArgs SINGLE_DATA_HOLE = new ConstructorArgs(DataHole.HOLE);
+    public static final ConstructorArgs SINGLE_DATA_HOLE = new ConstructorArgs(DataHole.HOLE);
     
-    public static TypeHole TYPE_HOLE_0 = new TypeHole(0);
+    public static final TypeHole TYPE_HOLE_0 = new TypeHole(0);
     
     public static final Type INT_TYPE = new Type("Int");
     public static final Type LONG_TYPE = new Type("Long");
@@ -43,6 +44,62 @@ public class TL {
     public static final Constructor DOUBLE = new Constructor("double", TL.DOUBLE_TYPE, TL.SINGLE_DATA_HOLE);
     public static final Constructor STRING = new Constructor("string", TL.STRING_TYPE, TL.SINGLE_DATA_HOLE);
     
+    private IType type;
+    private ITypedData data;
+    
+    public TL(Type type, ITypedData data) {
+        this.data = data;
+        this.type = type;
+    }
+    public TL(ITypedData data) {
+        this.data = data;
+        this.type = this.data.getConstructor();
+    }
+    
+    @Override
+    public int getId() {
+        return this.data.getConstructor().getId();
+    }
+    @Override
+    public int calcSize() {
+        return TL.calcSize(this.type, this.data);
+    }
+    @Override
+    public byte[] serialize() {
+        byte[] serialized = new byte[this.calcSize()];
+        
+        ByteBuffer buffer = ByteBuffer.wrap(serialized);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+    
+        TL.serialize(this.type, this.data, buffer);
+        
+        return serialized;
+    }
+    @Override
+    public void serialize(ByteBuffer buffer) {
+        TL.serialize(this.type, this.data, buffer);
+    }
+    
+    public static ITypedData parse(IConstructorProvider schema, ByteBuffer buffer) {
+        return (ITypedData) TL.deserialize(schema, TL.OBJECT_TYPE, buffer);
+    }
+    public static ITypedData parse(IConstructorProvider schema, byte[] serialized) {
+        return TL.parse(schema, TL.OBJECT_TYPE, serialized, 0);
+    }
+    public static ITypedData parse(IConstructorProvider schema, byte[] serialized, int offset) {
+        return TL.parse(schema, TL.OBJECT_TYPE, serialized, offset);
+    }
+    public static ITypedData parse(IConstructorProvider schema, IType type, byte[] serialized, int offset) {
+        ByteBuffer buffer = ByteBuffer.wrap(serialized);
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+        buffer.position(offset);
+        
+        return (ITypedData) TL.deserialize(schema, type, buffer);
+    }
+    public static ITypedData parse(IConstructorProvider schema, IType type, ByteBuffer buffer) {
+        return (ITypedData) TL.deserialize(schema, type, buffer);
+    }
+    
     public static int calcSize(IType t, Object data) {
         Constructor c;
     
@@ -62,7 +119,7 @@ public class TL {
                 
                 return length + (4 - length % 4) % 4;
             default:
-                ITypedDataProvider typedData = (ITypedDataProvider) data;
+                ITypedData typedData = (ITypedData) data;
                 
                 int total = 0;
                 
@@ -74,7 +131,7 @@ public class TL {
                 return total;
             }
         case TYPE:
-            c = ((ITypedDataProvider) data).getConstructor();
+            c = ((ITypedData) data).getConstructor();
             
             return 4 + TL.calcSize(c, data); 
         case PSEUDO:
@@ -146,7 +203,7 @@ public class TL {
                 
                 return;
             default:
-                ITypedDataProvider typedData = (ITypedDataProvider) data;
+                ITypedData typedData = (ITypedData) data;
                 
                 int i = 0;
                 for (ConstructorArg arg : c.getArgs()) {
@@ -156,7 +213,7 @@ public class TL {
             
             return;
         case TYPE:
-            ITypedDataProvider typedData = (ITypedDataProvider) data;
+            ITypedData typedData = (ITypedData) data;
             c = typedData.getConstructor();
             
             buffer.putInt(c.getId());
@@ -193,7 +250,6 @@ public class TL {
         case CONSTRUCTOR:
             c = (Constructor) t;
         
-            int bytesCount;
             byte[] bytes;
         
             switch (c.getId()) {

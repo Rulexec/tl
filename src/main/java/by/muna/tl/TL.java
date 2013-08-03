@@ -56,6 +56,10 @@ public class TL implements TLValue {
         this.type = this.data.getConstructor();
     }
     
+    public ITypedData getData() {
+        return this.data;
+    }
+    
     @Override
     public int getId() {
         return this.data.getConstructor().getId();
@@ -213,10 +217,17 @@ public class TL implements TLValue {
             
             return;
         case TYPE:
+            Type type = (Type) t;
+        
             ITypedData typedData = (ITypedData) data;
-            c = typedData.getConstructor();
             
-            buffer.putInt(c.getId());
+            if (type.getRoot() != TL.VECTOR_TYPE) {
+                c = typedData.getConstructor();
+                buffer.putInt(c.getId());
+            } else {
+                c = TL.VECTOR.applyType(type.getSpecialisation());
+                buffer.putInt(0x1cb5c415);
+            }
             
             TL.serialize(c, typedData, buffer);
             
@@ -302,10 +313,16 @@ public class TL implements TLValue {
                 return new TypedData(c, values);
             }
         case TYPE:
+            Type type = (Type) t;
+            
             int id = buffer.getInt();
             
-            c = constructorProvider.getConstructor(id);
-            if (c == null) throw new RuntimeException("No constructor: " + Long.toHexString(id & 0xffffffff));
+            if (type.getRoot() != TL.VECTOR_TYPE) {
+                c = constructorProvider.getConstructor(id);
+                if (c == null) throw new RuntimeException("No constructor: " + Long.toHexString(id & 0xffffffff));
+            } else {
+                c = TL.VECTOR.applyType(type.getSpecialisation());
+            }
             
             return TL.deserialize(constructorProvider, c, buffer);
         case PSEUDO:

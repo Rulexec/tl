@@ -38,7 +38,7 @@ public class SerializeTest {
         
         byte[] expected = SerializeTest.fromHex(
             "08" + "6c656e6774682038" + "000000" + // string
-            "ae5538a0" + // crc32("vector # [ int ] = Vector int")
+            "15c4b51c" + // universal vector
                 "05000000" + // vector elements count
                     "01000000" + "02000000" + "03000000" + "04000000" + "05000000" +
             "3905000000000000" // long

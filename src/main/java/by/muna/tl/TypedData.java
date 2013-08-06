@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import by.muna.types.Constructor;
-import by.muna.types.IType;
 
 public class TypedData implements ITypedData, TLValue {
     private Constructor constructor;
@@ -30,6 +29,7 @@ public class TypedData implements ITypedData, TLValue {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public <T> T getTypedData(int i) {
         return (T) this.data[i];
     }
@@ -46,7 +46,7 @@ public class TypedData implements ITypedData, TLValue {
     }
     @Override
     public int calcSize() {
-        return TL.calcSize(this.constructor, this.data);
+        return TL.calcSize(this.constructor, this);
     }
     @Override
     public byte[] serialize() {
@@ -55,13 +55,13 @@ public class TypedData implements ITypedData, TLValue {
         ByteBuffer buffer = ByteBuffer.wrap(serialized);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
     
-        TL.serialize(this.constructor, this.data, buffer);
+        TL.serialize(this.constructor, this, buffer);
         
         return serialized;
     }
     @Override
     public void serialize(ByteBuffer buffer) {
-        TL.serialize(this.constructor, this.data, buffer);
+        TL.serialize(this.constructor, this, buffer);
     }
 
 }

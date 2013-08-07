@@ -65,6 +65,11 @@ public class TypedData implements ITypedData, TLValue {
     }
 
     @Override
+    public ITypedData getData() {
+        return this;
+    }
+
+    @Override
     public String toString() {
         return TL.toString(this.constructor, this);
     }

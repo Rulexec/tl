@@ -7,4 +7,6 @@ public interface TLValue {
     int calcSize();
     byte[] serialize();
     void serialize(ByteBuffer buffer);
+
+    ITypedData getData();
 }

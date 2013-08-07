@@ -57,7 +57,8 @@ public class TL implements TLValue {
         this.data = data;
         this.type = this.data.getConstructor();
     }
-    
+
+    @Override
     public ITypedData getData() {
         return this.data;
     }

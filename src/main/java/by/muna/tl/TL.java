@@ -2,6 +2,8 @@ package by.muna.tl;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.text.NumberFormat;
+import java.util.Locale;
 
 import by.muna.types.Constructor;
 import by.muna.types.ConstructorArg;
@@ -83,6 +85,11 @@ public class TL implements TLValue {
     public void serialize(ByteBuffer buffer) {
         TL.serialize(this.type, this.data, buffer);
     }
+
+    @Override
+    public String toString() {
+        return TL.toString(this.type, this.data);
+    }
     
     public static ITypedData parse(IConstructorProvider schema, ByteBuffer buffer) {
         return (ITypedData) TL.deserialize(schema, TL.OBJECT_TYPE, buffer);
@@ -102,6 +109,75 @@ public class TL implements TLValue {
     }
     public static ITypedData parse(IConstructorProvider schema, IType type, ByteBuffer buffer) {
         return (ITypedData) TL.deserialize(schema, type, buffer);
+    }
+
+    public static String toString(IType t, Object data) {
+        return TL.toString(t, data, false);
+    }
+    public static String toString(IType t, Object data, boolean boxed) {
+        Constructor c;
+
+        switch (t.getTypeType()) {
+        case CONSTRUCTOR:
+            c = (Constructor) t;
+
+            switch (c.getId()) {
+            case TL.INT_ID: return data.toString();
+            case TL.LONG_ID: return data.toString() + "L";
+            case TL.DOUBLE_ID: return NumberFormat.getNumberInstance(Locale.US).format(data) + "d";
+            case TL.INT128_ID: case TL.INT256_ID: return "0x" + TL.bytesToHex((byte[]) data);
+            case TL.STRING_ID: return '\'' + TL.bytesToHex((byte[]) data) + '\'';
+            default:
+                ITypedData typedData = (ITypedData) data;
+
+                StringBuilder sb = new StringBuilder();
+                sb.append(boxed ? '[' : '(');
+
+                sb.append(c.getRootName());
+
+                int i = 0;
+                for (ConstructorArg arg : c.getArgs()) {
+                    sb.append(' ');
+
+                    if (arg.getName() != null) {
+                        sb.append(arg.getName()).append(':');
+                    }
+
+                    sb.append(TL.toString(arg.getType(), typedData.getTypedData(i++)));
+                }
+
+                sb.append(boxed ? ']' : ')');
+
+                return sb.toString();
+            }
+        case TYPE:
+            ITypedData typedData = (ITypedData) data;
+
+            return TL.toString(typedData.getConstructor(), typedData, true);
+        case PSEUDO:
+            if (t instanceof VectorHole) {
+                VectorHole hole = (VectorHole) t;
+                IType specialisation = hole.getSpecialisation();
+
+                Object[] vectorData = (Object[]) data;
+
+                StringBuilder sb = new StringBuilder();
+
+                boolean isFirst = true;
+                for (Object o : vectorData) {
+                    if (!isFirst) sb.append(", ");
+                    else isFirst = false;
+
+                    sb.append(TL.toString(specialisation, o));
+                }
+
+                return sb.toString();
+            } else {
+                throw new RuntimeException("unsupported pseudo-type: " + t.getClass().getCanonicalName());
+            }
+        default:
+            throw new RuntimeException("unknown type type: " + t.getTypeType());
+        }
     }
     
     public static int calcSize(IType t, Object data) {
@@ -357,5 +433,19 @@ public class TL implements TLValue {
         default:
             throw new RuntimeException("unknown type type: " + t.getTypeType());
         }
+    }
+
+    public static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+
+        for (byte b : bytes) {
+            String hexString = Integer.toHexString(b & 0xff);
+
+            if (hexString.length() == 1) sb.append('0');
+
+            sb.append(hexString);
+        }
+
+        return sb.toString();
     }
 }

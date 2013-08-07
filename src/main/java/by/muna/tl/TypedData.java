@@ -64,4 +64,9 @@ public class TypedData implements ITypedData, TLValue {
         TL.serialize(this.constructor, this, buffer);
     }
 
+    @Override
+    public String toString() {
+        return TL.toString(this.constructor, this);
+    }
+
 }

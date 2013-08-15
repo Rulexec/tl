@@ -1,10 +1,16 @@
 package by.muna.tl;
 
+import java.beans.Encoder;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetEncoder;
 import java.text.NumberFormat;
 import java.util.Locale;
 
+import by.muna.tl.by.muna.magic.utf8.UTF8;
 import by.muna.types.Constructor;
 import by.muna.types.ConstructorArg;
 import by.muna.types.ConstructorArgs;
@@ -45,6 +51,8 @@ public class TL implements TLValue {
     public static final Constructor LONG = new Constructor("long", TL.LONG_TYPE, TL.SINGLE_DATA_HOLE);
     public static final Constructor DOUBLE = new Constructor("double", TL.DOUBLE_TYPE, TL.SINGLE_DATA_HOLE);
     public static final Constructor STRING = new Constructor("string", TL.STRING_TYPE, TL.SINGLE_DATA_HOLE);
+
+    private static final Charset UTF8_CHARSET = Charset.forName("UTF-8");
     
     private IType type;
     private ITypedData data;
@@ -194,9 +202,15 @@ public class TL implements TLValue {
             case TL.INT256_ID: return 32;
             case TL.LONG_ID: case TL.DOUBLE_ID: return 8;
             case TL.STRING_ID:
-                byte[] bytes = (byte[]) data;
+                int bytesLength;
+
+                if (data instanceof String) {
+                    bytesLength = UTF8.calcSize((String) data);
+                } else {
+                    bytesLength = ((byte[]) data).length;
+                }
                 
-                int length = (bytes.length <= 253 ? 1 : 4) + bytes.length;
+                int length = (bytesLength <= 253 ? 1 : 4) + bytesLength;
                 
                 return length + (4 - length % 4) % 4;
             default:
@@ -261,24 +275,35 @@ public class TL implements TLValue {
             case TL.DOUBLE_ID: buffer.putDouble((Double) data); return;
             case TL.INT128_ID: case TL.INT256_ID: buffer.put((byte[]) data); return;
             case TL.STRING_ID:
-                byte[] bytes = (byte[]) data;
+                int bytesLength;
+                ByteBuffer stringBuffer = null;
+
+                if (data instanceof String) {
+                    bytesLength = UTF8.calcSize((String) data);
+                } else {
+                    bytesLength = ((byte[]) data).length;
+                }
                 
-                int length = bytes.length + (bytes.length <= 253 ? 1 : 4);
+                int length = bytesLength + (bytesLength <= 253 ? 1 : 4);
             
-                if (bytes.length <= 253) {
-                    buffer.put((byte) bytes.length);
+                if (bytesLength <= 253) {
+                    buffer.put((byte) bytesLength);
                 } else {
                     buffer.put((byte) 254);
-                    byte q = (byte) ((bytes.length >>> 0) & 0xff),
-                         w = (byte) ((bytes.length >>> 8) & 0xff),
-                         e = (byte) ((bytes.length >>> 16) & 0xff);
+                    byte q = (byte) ((bytesLength >>> 0) & 0xff),
+                         w = (byte) ((bytesLength >>> 8) & 0xff),
+                         e = (byte) ((bytesLength >>> 16) & 0xff);
                     
                     buffer.put(q);
                     buffer.put(w);
                     buffer.put(e);
                 }
-                
-                buffer.put(bytes);
+
+                if (data instanceof String) {
+                    UTF8.encode((String) data, buffer);
+                } else {
+                    buffer.put((byte[]) data);
+                }
                 
                 buffer.position(buffer.position() + (4 - length % 4) % 4);
                 
@@ -297,12 +322,12 @@ public class TL implements TLValue {
             Type type = (Type) t;
         
             ITypedData typedData = (ITypedData) data;
+
+            c = typedData.getConstructor();
             
             if (type.getRoot() != TL.VECTOR_TYPE) {
-                c = typedData.getConstructor();
                 buffer.putInt(c.getId());
             } else {
-                c = TL.VECTOR.applyType(type.getSpecialisation());
                 buffer.putInt(0x1cb5c415);
             }
             

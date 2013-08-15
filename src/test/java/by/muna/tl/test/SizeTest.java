@@ -18,6 +18,7 @@ public class SizeTest {
             "test", new Type("Test"),
             new ConstructorArgs(
                 "name", TL.STRING,
+                "str", TL.STRING,
                 "numbers", TL.VECTOR_TYPE.applyType(TL.INT),
                 "longNumber", TL.LONG
             )
@@ -25,6 +26,7 @@ public class SizeTest {
         
         ITypedData data = new TypedData(c, new Object[] {
             "length 8".getBytes(), // string
+            "length 8", // as UTF-8 String
             
             new TypedData(TL.VECTOR.applyType(TL.INT), new Object[] { // vector
                 new Integer[] {1, 2, 3, 4, 5} // vector first argument
@@ -35,6 +37,7 @@ public class SizeTest {
         
         int expected =
             1 + 8 + 3 + // string: size byte, bytes, padding
+            1 + 8 + 3 + // another string
             4 + // Vector constructor id
                 4 + // vector elements count int
                     5 * 4 + // vector elements (integers)
